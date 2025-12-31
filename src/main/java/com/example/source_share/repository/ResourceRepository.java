@@ -5,7 +5,32 @@ import com.example.source_share.model.ResourceNode;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface ResourceRepository extends JpaRepository<ResourceNode, Long> {
     boolean existsByCategoryCode(CategoryCode categoryCode);
+
+    /**
+     * 根据资源名称模糊查询 (忽略大小写)
+     * @param nodeName 资源名称关键词
+     * @return 匹配的资源列表
+     */
+    List<ResourceNode> findByNodeNameContainingIgnoreCase(String nodeName);
+
+    /**
+     * 根据分类代码查找根节点
+     * @param categoryCode 分类代码
+     * @return 根节点
+     */
+    ResourceNode findByCategoryCode(CategoryCode categoryCode);
+
+    /**
+     * 查找直接子节点
+     * 原理：使用 ltree 操作符 ~ (匹配正则表达式)
+     * parentPath.*{1} 表示匹配 parentPath 下的一级子节点
+     * 注意：nativeQuery = true 是必须的，因为 JPQL 不支持 ltree 操作符
+     */
+    @org.springframework.data.jpa.repository.Query(value = "SELECT * FROM resource_nodes WHERE tree_path ~ (?1 || '.*{1}')::lquery", nativeQuery = true)
+    List<ResourceNode> findDirectChildren(String parentPath);
 }

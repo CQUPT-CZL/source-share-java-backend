@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api") 
+@RequestMapping("/api/tokens") 
 @CrossOrigin(origins = "*")
 public class LoginController {
 
@@ -22,7 +22,7 @@ public class LoginController {
     @Autowired
     private JwtUtils jwtUtils;
 
-    @PostMapping("/login")
+    @PostMapping
     public Result<Map<String, Object>> login(@RequestBody User loginRequest) {
         // 1. 调用 Service 进行登录
         User user = loginService.login(loginRequest.getUsername(), loginRequest.getPassword());
