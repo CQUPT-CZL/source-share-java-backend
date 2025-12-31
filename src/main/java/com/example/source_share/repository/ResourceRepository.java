@@ -3,6 +3,7 @@ package com.example.source_share.repository;
 import com.example.source_share.model.CategoryCode;
 import com.example.source_share.model.ResourceNode;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -31,6 +32,13 @@ public interface ResourceRepository extends JpaRepository<ResourceNode, Long> {
      * parentPath.*{1} 表示匹配 parentPath 下的一级子节点
      * 注意：nativeQuery = true 是必须的，因为 JPQL 不支持 ltree 操作符
      */
-    @org.springframework.data.jpa.repository.Query(value = "SELECT * FROM resource_nodes WHERE tree_path ~ (?1 || '.*{1}')::lquery", nativeQuery = true)
-    List<ResourceNode> findDirectChildren(String parentPath);
+    // @org.springframework.data.jpa.repository.Query(value = "SELECT * FROM resource_nodes WHERE tree_path ~ (?1 || '.*{1}')::lquery", nativeQuery = true)
+    // List<ResourceNode> findDirectChildren(String parentPath);
+
+    @Query(value = """
+    SELECT * FROM resource_nodes 
+    WHERE tree_path <@ CAST(?1 AS ltree) 
+      AND nlevel(tree_path) = nlevel(CAST(?1 AS ltree)) + 1
+    """, nativeQuery = true)
+List<ResourceNode> findDirectChildren(String parentPath);
 }
