@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -88,12 +90,27 @@ public class ResourceService {
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
 
         // 3. 构建新的资源节点对象
+        Map<String, Object> properties = request.getProperties();
+        if (properties == null) {
+            properties = new HashMap<>();
+        }
+
+        // 3.1 自动推断文件后缀 (如果是文件类型)
+        if (request.getResourceType() == NodeType.FILE) {
+            String fileName = request.getNodeName();
+            int lastDotIndex = fileName.lastIndexOf(".");
+            if (lastDotIndex > 0 && lastDotIndex < fileName.length() - 1) {
+                String extension = fileName.substring(lastDotIndex + 1).toLowerCase();
+                properties.put("extension", extension);
+            }
+        }
+
         ResourceNode resourceNode = ResourceNode.builder()
                 .nodeName(request.getNodeName())
                 .resourceType(request.getResourceType())
                 .ownerId(userId)
                 .ownerName(user.getRealName() != null ? user.getRealName() : user.getUsername())
-                .properties(request.getProperties())
+                .properties(properties)
                 .build();
 
         // 4. 处理父子关系与路径
