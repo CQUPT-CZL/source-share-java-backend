@@ -164,6 +164,11 @@ public class ResourceService {
                 String extension = fileName.substring(lastDotIndex + 1).toLowerCase();
                 properties.put("extension", extension);
             }
+            
+            // 确保 size 属性存在且为数字
+            if (properties.get("size") == null) {
+                properties.put("size", 0);
+            }
         }
 
         ResourceNode resourceNode = ResourceNode.builder()
