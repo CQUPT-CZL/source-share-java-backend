@@ -13,11 +13,11 @@ public interface ResourceRepository extends JpaRepository<ResourceNode, Long> {
     boolean existsByCategoryCode(CategoryCode categoryCode);
 
     /**
-     * 根据资源名称模糊查询 (忽略大小写)
+     * 根据资源名称模糊查询 (忽略大小写)，优先显示文件夹
      * @param nodeName 资源名称关键词
      * @return 匹配的资源列表
      */
-    List<ResourceNode> findByNodeNameContainingIgnoreCase(String nodeName);
+    List<ResourceNode> findByNodeNameContainingIgnoreCaseOrderByResourceTypeAscNodeNameAsc(String nodeName);
 
     /**
      * 根据分类代码查找根节点
@@ -55,4 +55,18 @@ public interface ResourceRepository extends JpaRepository<ResourceNode, Long> {
     )
     """, nativeQuery = true)
     boolean existsChildren(String parentPath);
+
+    /**
+     * 在指定文件夹及其子文件夹下搜索资源 (递归)
+     * @param rootPath 搜索的根目录路径
+     * @param keyword 搜索关键词 (资源名称)
+     * @return 匹配的资源列表
+     */
+    @Query(value = """
+        SELECT * FROM resource_nodes 
+        WHERE tree_path <@ CAST(?1 AS ltree) 
+          AND node_name ILIKE CONCAT('%', ?2, '%')
+        ORDER BY resource_type ASC, node_name ASC
+    """, nativeQuery = true)
+    List<ResourceNode> searchRecursively(String rootPath, String keyword);
 }

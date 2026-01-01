@@ -12,11 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ResourceService {
@@ -119,13 +116,94 @@ public class ResourceService {
     /**
      * 搜索资源
      * @param keyword 关键词
+     * @param folderId 搜索范围的文件夹ID (如果为 null，则搜索所有)
      * @return 匹配的资源列表
      */
-    public List<ResourceNode> searchResources(String keyword) {
+    public List<ResourceNode> searchResources(String keyword, Long folderId) {
         if (keyword == null || keyword.trim().isEmpty()) {
             return Collections.emptyList();
         }
-        return resourceRepository.findByNodeNameContainingIgnoreCase(keyword.trim());
+        
+        List<ResourceNode> results;
+        
+        // 如果没有指定文件夹，默认全库搜索
+        if (folderId == null) {
+            results = resourceRepository.findByNodeNameContainingIgnoreCaseOrderByResourceTypeAscNodeNameAsc(keyword.trim());
+        } else {
+            // 如果指定了文件夹，先找到该文件夹获取其 treePath
+            ResourceNode folder = resourceRepository.findById(folderId)
+                    .orElseThrow(() -> new IllegalArgumentException("搜索的文件夹不存在"));
+            
+            if (folder.getResourceType() != NodeType.DIRECTORY) {
+                 throw new IllegalArgumentException("搜索范围必须是文件夹");
+            }
+
+            results = resourceRepository.searchRecursively(folder.getTreePath(), keyword.trim());
+        }
+        
+        // 填充路径信息，方便前端区分同名文件
+        populatePathInfo(results);
+        
+        return results;
+    }
+
+    /**
+     * 批量填充资源的路径信息 (displayPath)
+     */
+    private void populatePathInfo(List<ResourceNode> nodes) {
+        if (nodes == null || nodes.isEmpty()) {
+            return;
+        }
+
+        // 1. 收集所有涉及的父节点 ID
+        Set<Long> allParentIds = new HashSet<>();
+        for (ResourceNode node : nodes) {
+            if (node.getTreePath() != null) {
+                String[] parts = node.getTreePath().split("\\.");
+                // 排除自己 (最后一个 ID)
+                for (int i = 0; i < parts.length - 1; i++) {
+                    try {
+                        allParentIds.add(Long.parseLong(parts[i]));
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        }
+
+        if (allParentIds.isEmpty()) {
+            return;
+        }
+
+        // 2. 批量查询 ID 对应的名称
+        List<ResourceNode> parents = resourceRepository.findAllById(allParentIds);
+        Map<Long, String> idNameMap = parents.stream()
+                .collect(Collectors.toMap(ResourceNode::getId, ResourceNode::getNodeName));
+
+        // 3. 构建路径字符串并填充
+        for (ResourceNode node : nodes) {
+            if (node.getTreePath() != null) {
+                String[] parts = node.getTreePath().split("\\.");
+                StringBuilder pathBuilder = new StringBuilder();
+                
+                for (int i = 0; i < parts.length - 1; i++) { // 不包含自己
+                    try {
+                        Long id = Long.parseLong(parts[i]);
+                        String name = idNameMap.get(id);
+                        if (name != null) {
+                            if (pathBuilder.length() > 0) {
+                                pathBuilder.append(" / ");
+                            }
+                            pathBuilder.append(name);
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+                
+                // 存入 properties
+                if (node.getProperties() == null) {
+                    node.setProperties(new HashMap<>());
+                }
+                node.getProperties().put("displayPath", pathBuilder.toString());
+            }
+        }
     }
 
     /**

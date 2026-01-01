@@ -41,8 +41,14 @@ public class ResourceController {
     }
 
     @GetMapping
-    public Result<java.util.List<ResourceNode>> searchResources(@RequestParam String keyword) {
-        return Result.success(resourceService.searchResources(keyword));
+    public Result<java.util.List<ResourceNode>> searchResources(
+            @RequestParam String keyword, 
+            @RequestParam(required = false) Long folderId) {
+        try {
+            return Result.success(resourceService.searchResources(keyword, folderId));
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        }
     }
 
     @PostMapping
