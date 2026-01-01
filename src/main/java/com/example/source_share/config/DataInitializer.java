@@ -3,6 +3,8 @@ package com.example.source_share.config;
 import com.example.source_share.model.CategoryCode;
 import com.example.source_share.model.NodeType;
 import com.example.source_share.model.ResourceNode;
+import com.example.source_share.model.User;
+import com.example.source_share.repository.UserRepository;
 import com.example.source_share.repository.ResourceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -19,10 +21,16 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private ResourceRepository resourceRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Override
     @Transactional
     public void run(String... args) throws Exception {
         System.out.println("🚀 正在检查初始数据...");
+
+        // 初始化默认管理员
+        initAdminUser();
 
         // 定义你需要初始化的 5 大板块
         List<InitItem> items = Arrays.asList(
@@ -36,6 +44,24 @@ public class DataInitializer implements CommandLineRunner {
         for (InitItem item : items) {
             initRootNode(item.code, item.name);
         }
+    }
+
+    private void initAdminUser() {
+        String adminUsername = "admin";
+        if (userRepository.existsByUsername(adminUsername)) {
+            return;
+        }
+
+        System.out.println("👤 正在初始化默认管理员: admin");
+        User admin = new User();
+        admin.setUsername(adminUsername);
+        admin.setPassword("123"); // 默认密码
+        admin.setRole("admin");
+        admin.setRealName("管理员");
+        admin.setEmail("admin@example.com");
+        admin.setGrade("2024");
+        
+        userRepository.save(admin);
     }
 
     private void initRootNode(CategoryCode code, String name) {
