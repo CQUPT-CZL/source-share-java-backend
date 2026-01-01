@@ -58,4 +58,17 @@ public class FileStorageService {
     public Path load(String filename) {
         return rootLocation.resolve(filename);
     }
+
+    /**
+     * 删除文件
+     * @param filename 存储的文件名
+     */
+    public void deleteFile(String filename) {
+        try {
+            Path file = rootLocation.resolve(filename);
+            Files.deleteIfExists(file);
+        } catch (IOException e) {
+            throw new RuntimeException("无法删除文件: " + filename, e);
+        }
+    }
 }

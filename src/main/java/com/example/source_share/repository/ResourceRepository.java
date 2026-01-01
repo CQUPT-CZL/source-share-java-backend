@@ -40,5 +40,19 @@ public interface ResourceRepository extends JpaRepository<ResourceNode, Long> {
     WHERE tree_path <@ CAST(?1 AS ltree) 
       AND nlevel(tree_path) = nlevel(CAST(?1 AS ltree)) + 1
     """, nativeQuery = true)
-List<ResourceNode> findDirectChildren(String parentPath);
+    List<ResourceNode> findDirectChildren(String parentPath);
+
+    /**
+     * 检查指定路径下是否存在子节点
+     * @param parentPath 父节点路径
+     * @return 如果存在子节点返回 true
+     */
+    @Query(value = """
+    SELECT EXISTS (
+        SELECT 1 FROM resource_nodes 
+        WHERE tree_path <@ CAST(?1 AS ltree) 
+          AND nlevel(tree_path) = nlevel(CAST(?1 AS ltree)) + 1
+    )
+    """, nativeQuery = true)
+    boolean existsChildren(String parentPath);
 }

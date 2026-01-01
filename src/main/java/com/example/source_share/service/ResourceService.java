@@ -7,6 +7,7 @@ import com.example.source_share.model.ResourceNode;
 import com.example.source_share.model.User;
 import com.example.source_share.repository.ResourceRepository;
 import com.example.source_share.repository.UserRepository;
+import com.example.source_share.service.storage.FileStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,9 @@ public class ResourceService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private FileStorageService fileStorageService;
+
     /**
      * 根据分类代码获取根节点ID
      * @param categoryCode 分类代码
@@ -35,6 +39,51 @@ public class ResourceService {
         ResourceNode rootNode = resourceRepository.findByCategoryCode(categoryCode);
         return rootNode != null ? rootNode.getId() : null;
     }
+
+    /**
+     * 删除资源
+     * @param resourceId 资源ID
+     * @param userId 当前操作用户ID
+     * @param isAdmin 是否为管理员 (管理员拥有最高权限)
+     */
+    @Transactional
+    public void deleteResource(Long resourceId, Long userId, boolean isAdmin) {
+        // 1. 获取资源
+        ResourceNode node = resourceRepository.findById(resourceId)
+                .orElseThrow(() -> new IllegalArgumentException("资源不存在"));
+
+        // 2. 权限校验
+        // 如果不是管理员，必须检查所有权
+        if (!isAdmin) {
+            if (!node.getOwnerId().equals(userId)) {
+                throw new IllegalArgumentException("无权删除他人的资源");
+            }
+        }
+
+        // 3. 文件夹校验
+        if (node.getResourceType() == NodeType.DIRECTORY) {
+            if (resourceRepository.existsChildren(node.getTreePath())) {
+                throw new IllegalArgumentException("无法删除非空文件夹");
+            }
+        }
+
+        // 4. 物理文件清理 (如果是文件)
+        if (node.getResourceType() == NodeType.FILE) {
+            String filePath = (String) node.getProperties().get("filePath");
+            if (filePath != null) {
+                // 这里的删除异常不应该阻断数据库删除，可以记录日志
+                try {
+                    fileStorageService.deleteFile(filePath);
+                } catch (Exception e) {
+                    System.err.println("物理文件删除失败: " + filePath);
+                }
+            }
+        }
+
+        // 5. 数据库删除
+        resourceRepository.delete(node);
+    }
+
 
     /**
      * 获取指定目录下的所有子资源
