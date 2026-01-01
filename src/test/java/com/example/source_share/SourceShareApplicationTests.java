@@ -58,7 +58,7 @@ class SourceShareApplicationTests {
 		User user = new User("csr", "陈丝冉", "2023", "login@example.com", "123", "USER");
 		userRepository.save(user);
 
-		User user2 = new User("czl", "崔子梁", "2023", "login@example.com", "123", "ADMIN");
+		User user2 = new User("czl", "崔子梁", "2023", "login2@example.com", "123", "ADMIN");
 		userRepository.save(user2);
 
 		// 场景1: 使用 Username 登录
