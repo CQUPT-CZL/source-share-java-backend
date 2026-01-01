@@ -30,6 +30,9 @@ public class ResourceService {
     @Autowired
     private FileStorageService fileStorageService;
 
+    @Autowired
+    private LogService logService;
+
     /**
      * 根据分类代码获取根节点ID
      * @param categoryCode 分类代码
@@ -82,6 +85,15 @@ public class ResourceService {
 
         // 5. 数据库删除
         resourceRepository.delete(node);
+
+        // 6. 记录日志 (异步)
+        logService.log(
+            userId, 
+            "DELETE", 
+            node.getNodeName(), 
+            node.getId(), 
+            "Deleted resource type: " + node.getResourceType()
+        );
     }
 
 
@@ -197,6 +209,17 @@ public class ResourceService {
         }
 
         resourceNode.setTreePath(finalPath);
-        return resourceRepository.save(resourceNode);
+        resourceNode = resourceRepository.save(resourceNode);
+
+        // 7. 记录日志 (异步)
+        logService.log(
+            userId, 
+            "UPLOAD", 
+            resourceNode.getNodeName(), 
+            resourceNode.getId(), 
+            "Created resource type: " + resourceNode.getResourceType()
+        );
+
+        return resourceNode;
     }
 }
